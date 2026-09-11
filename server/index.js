@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import productsRouter from "./routes/products.js";
+import "dotenv/config";
+import mongoose from "mongoose";
 
 const app = express();
 const PORT = 3000;
@@ -62,21 +64,17 @@ app.get("/products", (req, res) => {
 
   let filteredProducts = search
     ? products.filter((product) =>
-        product.name.toLowerCase().includes(search.toLowerCase())
+        product.name.toLowerCase().includes(search.toLowerCase()),
       )
     : products;
 
   if (sort === "price-asc") {
-    filteredProducts = [...filteredProducts].sort(
-      (a, b) => a.price - b.price
-    );
+    filteredProducts = [...filteredProducts].sort((a, b) => a.price - b.price);
   } else if (sort === "price-desc") {
-    filteredProducts = [...filteredProducts].sort(
-      (a, b) => b.price - a.price
-    );
+    filteredProducts = [...filteredProducts].sort((a, b) => b.price - a.price);
   } else if (sort === "name-asc") {
     filteredProducts = [...filteredProducts].sort((a, b) =>
-      a.name.localeCompare(b.name)
+      a.name.localeCompare(b.name),
     );
   }
 
@@ -134,9 +132,7 @@ app.post("/products", (req, res) => {
 
 // patch route
 app.patch("/products/:id", (req, res) => {
-  const product = products.find(
-    (product) => product.id === req.params.id
-  );
+  const product = products.find((product) => product.id === req.params.id);
 
   if (!product) {
     return res.status(404).json({
@@ -146,38 +142,25 @@ app.patch("/products/:id", (req, res) => {
 
   const { name, price, quantity } = req.body ?? {};
 
-  if (
-    name === undefined &&
-    price === undefined &&
-    quantity === undefined
-  ) {
+  if (name === undefined && price === undefined && quantity === undefined) {
     return res.status(400).json({
       message: "provide a name, price, or quantity to update",
     });
   }
 
-  if (
-    name !== undefined &&
-    (typeof name !== "string" || name.trim() === "")
-  ) {
+  if (name !== undefined && (typeof name !== "string" || name.trim() === "")) {
     return res.status(400).json({
       message: "name must be a non-empty string",
     });
   }
 
-  if (
-    price !== undefined &&
-    (!Number.isFinite(price) || price < 0)
-  ) {
+  if (price !== undefined && (!Number.isFinite(price) || price < 0)) {
     return res.status(400).json({
       message: "price must be a non-negative number",
     });
   }
 
-  if (
-    quantity !== undefined &&
-    (!Number.isInteger(quantity) || quantity < 1)
-  ) {
+  if (quantity !== undefined && (!Number.isInteger(quantity) || quantity < 1)) {
     return res.status(400).json({
       message: "quantity must be a whole number of at least 1",
     });
@@ -193,9 +176,7 @@ app.patch("/products/:id", (req, res) => {
 
 // delete route
 app.delete("/products/:id", (req, res) => {
-  const index = products.findIndex(
-    (product) => product.id === req.params.id
-  );
+  const index = products.findIndex((product) => product.id === req.params.id);
 
   if (index === -1) {
     return res.status(404).json({
@@ -223,17 +204,42 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error(err);
 
+  if (err.name === "ValidationError") {
+    return res.status(400).json({
+      message: Object.values(err.errors)
+        .map((error) => error.message)
+        .join("; "),
+    });
+  }
+
   const status = err.status || 500;
 
   res.status(status).json({
-    message:
-      status === 500
-        ? "something went wrong"
-        : err.message,
+    message: status === 500 ? "something went wrong" : err.message,
   });
 });
 
-// start accepting requests.
-app.listen(PORT, () => {
-  console.log(`Server is running at http://localhost:${PORT}`);
-});
+// start server
+async function startServer() {
+  try {
+    if (!process.env.MONGODB_URI) {
+      throw new Error("MONGODB_URI is missing from server/.env");
+    }
+
+    await mongoose.connect(process.env.MONGODB_URI, {
+      dbName: "product_manager",
+      serverSelectionTimeoutMS: 10000,
+    });
+
+    console.log("Connected to MongoDB");
+
+    app.listen(PORT, () => {
+      console.log(`Server running at http://localhost:${PORT}`);
+    });
+  } catch (err) {
+    console.error("Server startup failed:", err.message);
+    process.exit(1);
+  }
+}
+
+startServer();

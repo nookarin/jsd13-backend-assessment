@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./App.css";
+import { Link } from "react-router";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -297,7 +298,13 @@ function App() {
                     </span>
 
                     <div className="product-card__info">
-                      <h3 className="product-card__name">{product.name}</h3>
+                      <h3 className="product-card__name">
+                        <Link
+                          to={`/products/${encodeURIComponent(product.id)}`}
+                        >
+                          {product.name}
+                        </Link>
+                      </h3>
                       <span
                         className={
                           product.quantity <= LOW_STOCK_THRESHOLD
