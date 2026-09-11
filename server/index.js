@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import productsRouter from "./routes/products.js";
 
 const app = express();
 const PORT = 3000;
@@ -40,9 +41,10 @@ app.get("/", (req, res) => {
   });
 });
 
-// listing product from search
+// listing products with optional search and sort
 app.get("/products", (req, res) => {
   const search = req.query.search;
+  const sort = req.query.sort;
 
   if (search !== undefined && typeof search !== "string") {
     return res.status(400).json({
@@ -50,16 +52,38 @@ app.get("/products", (req, res) => {
     });
   }
 
-  const filteredProducts = search
+  const validSorts = new Set(["", "price-asc", "price-desc", "name-asc"]);
+
+  if (sort !== undefined && !validSorts.has(sort)) {
+    return res.status(400).json({
+      message: "sort must be one of price-asc, price-desc, or name-asc",
+    });
+  }
+
+  let filteredProducts = search
     ? products.filter((product) =>
         product.name.toLowerCase().includes(search.toLowerCase())
       )
     : products;
 
+  if (sort === "price-asc") {
+    filteredProducts = [...filteredProducts].sort(
+      (a, b) => a.price - b.price
+    );
+  } else if (sort === "price-desc") {
+    filteredProducts = [...filteredProducts].sort(
+      (a, b) => b.price - a.price
+    );
+  } else if (sort === "name-asc") {
+    filteredProducts = [...filteredProducts].sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+  }
+
   res.status(200).json(filteredProducts);
 });
 
-// route for a product
+// route for find product
 app.get("/products/:id", (req, res) => {
   const id = req.params.id;
 
@@ -185,6 +209,8 @@ app.delete("/products/:id", (req, res) => {
     message: "product deleted",
   });
 });
+
+app.use("/products", productsRouter);
 
 // unknown route.
 app.use((req, res) => {

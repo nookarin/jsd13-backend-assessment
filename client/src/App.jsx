@@ -43,18 +43,38 @@ function App() {
   const [deletingId, setDeletingId] = useState(null);
   const [deleteError, setDeleteError] = useState("");
 
+  const [searchInput, setSearchInput] = useState("");
+  const [sortInput, setSortInput] = useState("");
+
+  const [filters, setFilters] = useState({
+    search: "",
+    sort: "",
+  });
+
+  const [refreshKey, setRefreshKey] = useState(0);
+
   useEffect(() => {
     let ignore = false;
 
     async function loadProducts() {
-      try {
-        const response = await fetch(`${API_URL}/products`);
+      setLoading(true);
+      setError("");
 
-        if (!response.ok) {
-          throw new Error(`could not load products (${response.status})`);
-        }
+      try {
+        const params = new URLSearchParams({
+          search: filters.search,
+          sort: filters.sort,
+        });
+
+        const response = await fetch(
+          `${API_URL}/products?${params.toString()}`,
+        );
 
         const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Could not load products");
+        }
 
         if (!ignore) {
           setProducts(data);
@@ -75,7 +95,7 @@ function App() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [filters, refreshKey]);
 
   async function handleSaveProduct(event) {
     event.preventDefault();
@@ -107,7 +127,7 @@ function App() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Could not save product");
+        throw new Error(data.message || "could not save product");
       }
 
       setProducts((currentProducts) => {
@@ -199,6 +219,66 @@ function App() {
               </h2>
               <span className="panel__count">{products.length}</span>
             </div>
+
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+
+                setFilters({
+                  search: searchInput.trim(),
+                  sort: sortInput,
+                });
+              }}
+            >
+              <fieldset disabled={saving || deletingId !== null}>
+                <legend className="sr-only">Find products</legend>
+
+                <div className="form-field">
+                  <label htmlFor="search-products">Search by name</label>
+                  <input
+                    className="input"
+                    id="search-products"
+                    type="search"
+                    value={searchInput}
+                    onChange={(event) => setSearchInput(event.target.value)}
+                    placeholder="For example: keyboard"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label htmlFor="sort-products">Sort by</label>
+                  <select
+                    className="input"
+                    id="sort-products"
+                    value={sortInput}
+                    onChange={(event) => setSortInput(event.target.value)}
+                  >
+                    <option value="">Default order</option>
+                    <option value="price-asc">Price: low to high</option>
+                    <option value="price-desc">Price: high to low</option>
+                    <option value="name-asc">Name: A–Z</option>
+                  </select>
+                </div>
+
+                <div className="form-actions">
+                  <button className="btn btn--primary" type="submit">
+                    Apply
+                  </button>
+
+                  <button
+                    className="btn btn--ghost"
+                    type="button"
+                    onClick={() => {
+                      setSearchInput("");
+                      setSortInput("");
+                      setFilters({ search: "", sort: "" });
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </fieldset>
+            </form>
 
             {products.length === 0 ? (
               <div className="empty">
