@@ -170,15 +170,6 @@ function App() {
     setFormError("");
   }
 
-  const totalUnits = products.reduce(
-    (sum, product) => sum + product.quantity,
-    0,
-  );
-  const totalValue = products.reduce(
-    (sum, product) => sum + product.price * product.quantity,
-    0,
-  );
-
   return (
     <main className="page">
       <section className="hero">
