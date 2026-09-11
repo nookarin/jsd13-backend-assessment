@@ -108,10 +108,88 @@ app.post("/products", (req, res) => {
   res.status(201).json(newProduct);
 });
 
+// patch route
+app.patch("/products/:id", (req, res) => {
+  const product = products.find(
+    (product) => product.id === req.params.id
+  );
+
+  if (!product) {
+    return res.status(404).json({
+      message: "Product not found",
+    });
+  }
+
+  const { name, price, quantity } = req.body ?? {};
+
+  if (
+    name === undefined &&
+    price === undefined &&
+    quantity === undefined
+  ) {
+    return res.status(400).json({
+      message: "provide a name, price, or quantity to update",
+    });
+  }
+
+  if (
+    name !== undefined &&
+    (typeof name !== "string" || name.trim() === "")
+  ) {
+    return res.status(400).json({
+      message: "name must be a non-empty string",
+    });
+  }
+
+  if (
+    price !== undefined &&
+    (!Number.isFinite(price) || price < 0)
+  ) {
+    return res.status(400).json({
+      message: "price must be a non-negative number",
+    });
+  }
+
+  if (
+    quantity !== undefined &&
+    (!Number.isInteger(quantity) || quantity < 1)
+  ) {
+    return res.status(400).json({
+      message: "quantity must be a whole number of at least 1",
+    });
+  }
+
+  // change fields only after all validation has passed.
+  if (name !== undefined) product.name = name.trim();
+  if (price !== undefined) product.price = price;
+  if (quantity !== undefined) product.quantity = quantity;
+
+  res.status(200).json(product);
+});
+
+// delete route
+app.delete("/products/:id", (req, res) => {
+  const index = products.findIndex(
+    (product) => product.id === req.params.id
+  );
+
+  if (index === -1) {
+    return res.status(404).json({
+      message: "product not found",
+    });
+  }
+
+  products.splice(index, 1);
+
+  res.status(200).json({
+    message: "product deleted",
+  });
+});
+
 // unknown route.
 app.use((req, res) => {
   res.status(404).json({
-    message: "Unknown route",
+    message: "unknown route",
   });
 });
 
@@ -124,7 +202,7 @@ app.use((err, req, res, next) => {
   res.status(status).json({
     message:
       status === 500
-        ? "Something went wrong"
+        ? "something went wrong"
         : err.message,
   });
 });

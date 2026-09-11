@@ -13,6 +13,10 @@ function App() {
 
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [editingId, setEditingId] = useState(null);
+
+  const [deletingId, setDeletingId] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     let ignore = false;
@@ -48,7 +52,7 @@ function App() {
     };
   }, []);
 
-  async function handleAddProduct(event) {
+  async function handleSaveProduct(event) {
     event.preventDefault();
 
     if (saving) return;
@@ -56,10 +60,15 @@ function App() {
     setSaving(true);
     setFormError("");
 
-    // submit handler
+    const isEditing = editingId !== null;
+
+    const url = isEditing
+      ? `${API_URL}/products/${editingId}`
+      : `${API_URL}/products`;
+
     try {
-      const response = await fetch(`${API_URL}/products`, {
-        method: "POST",
+      const response = await fetch(url, {
+        method: isEditing ? "PATCH" : "POST",
         headers: {
           "Content-Type": "application/json",
         },
@@ -73,19 +82,41 @@ function App() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Could not add product");
+        throw new Error(data.message || "Could not save product");
       }
 
-      setProducts((currentProducts) => [...currentProducts, data]);
+      setProducts((currentProducts) => {
+        if (isEditing) {
+          return currentProducts.map((product) =>
+            product.id === data.id ? data : product,
+          );
+        }
 
-      setName("");
-      setPrice("");
-      setQuantity("1");
+        return [...currentProducts, data];
+      });
+
+      resetForm();
     } catch (err) {
       setFormError(err.message);
     } finally {
       setSaving(false);
     }
+  }
+
+  function startEditing(product) {
+    setEditingId(product.id);
+    setName(product.name);
+    setPrice(String(product.price));
+    setQuantity(String(product.quantity));
+    setFormError("");
+  }
+
+  function resetForm() {
+    setEditingId(null);
+    setName("");
+    setPrice("");
+    setQuantity("1");
+    setFormError("");
   }
 
   if (loading) {
@@ -100,10 +131,10 @@ function App() {
     <main>
       <h1>Products</h1>
 
-      <form onSubmit={handleAddProduct}>
-        <h2>Add a product</h2>
+      <form onSubmit={handleSaveProduct}>
+        <h2>{editingId !== null ? "Edit product" : "Add a product"}</h2>
 
-        <fieldset disabled={saving}>
+        <fieldset disabled={saving || deletingId !== null}>
           <legend>Product information</legend>
 
           <div>
@@ -143,11 +174,25 @@ function App() {
             />
           </div>
 
-          <button type="submit">{saving ? "Adding..." : "Add product"}</button>
+          <button type="submit">
+            {saving
+              ? "Saving..."
+              : editingId !== null
+                ? "Save changes"
+                : "Add product"}
+          </button>
+
+          {editingId !== null && (
+            <button type="button" onClick={resetForm}>
+              Cancel
+            </button>
+          )}
         </fieldset>
 
         {formError && <p role="alert">{formError}</p>}
       </form>
+
+      {deleteError && <p role="alert">{deleteError}</p>}
 
       {products.length === 0 ? (
         <p>No products yet.</p>
@@ -158,6 +203,22 @@ function App() {
               <h2>{product.name}</h2>
               <p>Price: {product.price.toFixed(2)}</p>
               <p>Quantity: {product.quantity}</p>
+
+              <button
+                type="button"
+                onClick={() => startEditing(product)}
+                disabled={saving || deletingId !== null}
+              >
+                Edit
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleDeleteProduct(product.id)}
+                disabled={saving || deletingId !== null}
+              >
+                {deletingId === product.id ? "Deleting..." : "Delete"}
+              </button>
             </li>
           ))}
         </ul>
