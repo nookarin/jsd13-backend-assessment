@@ -142,23 +142,42 @@ function App() {
   }
 
   async function handleDeleteProduct(id) {
-    if (saving || deletingId !== null) return;
+    if (deletingId !== null || saving || loading) return;
+
+    const previousProducts = products;
 
     setDeletingId(id);
     setDeleteError("");
 
-    try {
-      const response = await fetch(`${API_URL}/products/${id}`, {
-        method: "DELETE",
-      });
+    // Update the screen before the API responds.
+    setProducts((currentProducts) =>
+      currentProducts.filter((product) => product.id !== id),
+    );
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
+    try {
+      const response = await fetch(
+        `${API_URL}/products/${encodeURIComponent(id)}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      // A 404 also means the product is already absent.
+      if (!response.ok && response.status !== 404) {
+        const data = await response.json();
+
         throw new Error(data.message || "Could not delete product");
       }
 
+      if (editingId === id) {
+        resetForm();
+      }
+
+      // Reconcile the list with the database after success.
       setRefreshKey((currentKey) => currentKey + 1);
     } catch (err) {
+      // Restore the previous list if the request fails.
+      setProducts(previousProducts);
       setDeleteError(err.message);
     } finally {
       setDeletingId(null);
