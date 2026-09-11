@@ -1,0 +1,48 @@
+@host = http://localhost:3000
+@productsUrl = {{host}}/products
+
+### server check
+GET {{host}}/
+Accept: application/json
+
+### list all products
+GET {{productsUrl}}
+Accept: application/json
+
+### search products
+GET {{productsUrl}}?search=key
+Accept: application/json
+
+### get product by id
+GET {{productsUrl}}/1
+Accept: application/json
+
+### create product -> 201
+POST {{productsUrl}}
+Content-Type: application/json
+
+{
+  "name": "Magic Keyboard",
+  "price": 129.99,
+  "quantity": 10
+}
+
+### update product -> 200
+PATCH {{productsUrl}}/1
+Content-Type: application/json
+
+{ "name": "Keyboard Pro", "price": 59.99, "quantity": 25 }
+
+### update only the price -> 200
+PATCH {{productsUrl}}/1
+Content-Type: application/json
+
+{ "price": 64.99 }
+
+### delete product -> 200
+DELETE {{productsUrl}}/1
+Accept: application/json
+
+### unknown route -> 404
+GET {{host}}/nope
+Accept: application/json
