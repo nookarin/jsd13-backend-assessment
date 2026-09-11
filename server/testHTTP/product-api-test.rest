@@ -13,6 +13,30 @@ Accept: application/json
 GET {{productsUrl}}?search=key
 Accept: application/json
 
+### sort by price ascending -> 200
+GET {{productsUrl}}?sort=price-asc
+Accept: application/json
+
+### sort by price descending -> 200
+GET {{productsUrl}}?sort=price-desc
+Accept: application/json
+
+### sort by name ascending -> 200
+GET {{productsUrl}}?sort=name-asc
+Accept: application/json
+
+### valid: empty sort -> 200
+GET {{productsUrl}}?sort=
+Accept: application/json
+
+### invalid sort -> 400
+GET {{productsUrl}}?sort=invalid
+Accept: application/json
+
+### sort + search combined -> 200
+GET {{productsUrl}}?search=key&sort=name-asc
+Accept: application/json
+
 ### get product by id
 GET {{productsUrl}}/1
 Accept: application/json
@@ -46,3 +70,15 @@ Accept: application/json
 ### unknown route -> 404
 GET {{host}}/nope
 Accept: application/json
+
+### Lowest price first
+GET http://localhost:3000/products?sort=price-asc
+
+### Highest price first
+GET http://localhost:3000/products?sort=price-desc
+
+### Search and sort together
+GET http://localhost:3000/products?search=key&sort=name-asc
+
+### Invalid sort
+GET http://localhost:3000/products?sort=invalid

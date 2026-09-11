@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./App.css";
+import { Link } from "react-router";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -43,18 +44,38 @@ function App() {
   const [deletingId, setDeletingId] = useState(null);
   const [deleteError, setDeleteError] = useState("");
 
+  const [searchInput, setSearchInput] = useState("");
+  const [sortInput, setSortInput] = useState("");
+
+  const [filters, setFilters] = useState({
+    search: "",
+    sort: "",
+  });
+
+  const [refreshKey, setRefreshKey] = useState(0);
+
   useEffect(() => {
     let ignore = false;
 
     async function loadProducts() {
-      try {
-        const response = await fetch(`${API_URL}/products`);
+      setLoading(true);
+      setError("");
 
-        if (!response.ok) {
-          throw new Error(`could not load products (${response.status})`);
-        }
+      try {
+        const params = new URLSearchParams({
+          search: filters.search,
+          sort: filters.sort,
+        });
+
+        const response = await fetch(
+          `${API_URL}/products?${params.toString()}`,
+        );
 
         const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "could not load products");
+        }
 
         if (!ignore) {
           setProducts(data);
@@ -75,7 +96,7 @@ function App() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [filters, refreshKey]);
 
   async function handleSaveProduct(event) {
     event.preventDefault();
@@ -107,18 +128,10 @@ function App() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Could not save product");
+        throw new Error(data.message || "could not save product");
       }
 
-      setProducts((currentProducts) => {
-        if (isEditing) {
-          return currentProducts.map((product) =>
-            product.id === data.id ? data : product,
-          );
-        }
-
-        return [...currentProducts, data];
-      });
+      setRefreshKey((currentKey) => currentKey + 1);
 
       resetForm();
     } catch (err) {
@@ -129,25 +142,42 @@ function App() {
   }
 
   async function handleDeleteProduct(id) {
-    if (saving || deletingId !== null) return;
+    if (deletingId !== null || saving || loading) return;
+
+    const previousProducts = products;
 
     setDeletingId(id);
     setDeleteError("");
 
-    try {
-      const response = await fetch(`${API_URL}/products/${id}`, {
-        method: "DELETE",
-      });
+    // Update the screen before the API responds.
+    setProducts((currentProducts) =>
+      currentProducts.filter((product) => product.id !== id),
+    );
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
+    try {
+      const response = await fetch(
+        `${API_URL}/products/${encodeURIComponent(id)}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      // A 404 also means the product is already absent.
+      if (!response.ok && response.status !== 404) {
+        const data = await response.json();
+
         throw new Error(data.message || "Could not delete product");
       }
 
-      setProducts((currentProducts) =>
-        currentProducts.filter((product) => product.id !== id),
-      );
+      if (editingId === id) {
+        resetForm();
+      }
+
+      // Reconcile the list with the database after success.
+      setRefreshKey((currentKey) => currentKey + 1);
     } catch (err) {
+      // Restore the previous list if the request fails.
+      setProducts(previousProducts);
       setDeleteError(err.message);
     } finally {
       setDeletingId(null);
@@ -186,6 +216,14 @@ function App() {
         <section className="panel state-panel state-panel--error" role="alert">
           <p className="state-panel__title">Couldn’t load products.</p>
           <p className="state-panel__hint">{error}</p>
+
+          <button
+            className="btn btn--primary"
+            type="button"
+            onClick={() => setRefreshKey((currentKey) => currentKey + 1)}
+          >
+            Retry
+          </button>
         </section>
       ) : (
         <div className="layout">
@@ -200,14 +238,74 @@ function App() {
               <span className="panel__count">{products.length}</span>
             </div>
 
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+
+                setFilters({
+                  search: searchInput.trim(),
+                  sort: sortInput,
+                });
+              }}
+            >
+              <fieldset disabled={saving || deletingId !== null}>
+                <legend className="sr-only">Find products</legend>
+
+                <div className="form-field">
+                  <label htmlFor="search-products">Search by name</label>
+                  <input
+                    className="input"
+                    id="search-products"
+                    type="search"
+                    value={searchInput}
+                    onChange={(event) => setSearchInput(event.target.value)}
+                    placeholder="For example: keyboard"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label htmlFor="sort-products">Sort by</label>
+                  <select
+                    className="input"
+                    id="sort-products"
+                    value={sortInput}
+                    onChange={(event) => setSortInput(event.target.value)}
+                  >
+                    <option value="">Default order</option>
+                    <option value="price-asc">Price: low to high</option>
+                    <option value="price-desc">Price: high to low</option>
+                    <option value="name-asc">Name: A–Z</option>
+                  </select>
+                </div>
+
+                <div className="form-actions">
+                  <button className="btn btn--primary" type="submit">
+                    Apply
+                  </button>
+
+                  <button
+                    className="btn btn--ghost"
+                    type="button"
+                    onClick={() => {
+                      setSearchInput("");
+                      setSortInput("");
+                      setFilters({ search: "", sort: "" });
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </fieldset>
+            </form>
+
             {products.length === 0 ? (
               <div className="empty">
                 <span className="empty__icon">
                   <BoxIcon />
                 </span>
-                <p className="empty__title">No products yet</p>
+                <p className="empty__title">No products found</p>
                 <p className="empty__hint">
-                  Add your first product using the form.
+                  Try another search, clear the filters, or add a product.
                 </p>
               </div>
             ) : (
@@ -219,7 +317,13 @@ function App() {
                     </span>
 
                     <div className="product-card__info">
-                      <h3 className="product-card__name">{product.name}</h3>
+                      <h3 className="product-card__name">
+                        <Link
+                          to={`/products/${encodeURIComponent(product.id)}`}
+                        >
+                          {product.name}
+                        </Link>
+                      </h3>
                       <span
                         className={
                           product.quantity <= LOW_STOCK_THRESHOLD
