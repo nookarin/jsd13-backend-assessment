@@ -73,7 +73,7 @@ function App() {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.message || "Could not load products");
+          throw new Error(data.message || "could not load products");
         }
 
         if (!ignore) {
@@ -130,15 +130,7 @@ function App() {
         throw new Error(data.message || "could not save product");
       }
 
-      setProducts((currentProducts) => {
-        if (isEditing) {
-          return currentProducts.map((product) =>
-            product.id === data.id ? data : product,
-          );
-        }
-
-        return [...currentProducts, data];
-      });
+      setRefreshKey((currentKey) => currentKey + 1);
 
       resetForm();
     } catch (err) {
@@ -164,9 +156,7 @@ function App() {
         throw new Error(data.message || "Could not delete product");
       }
 
-      setProducts((currentProducts) =>
-        currentProducts.filter((product) => product.id !== id),
-      );
+      setRefreshKey((currentKey) => currentKey + 1);
     } catch (err) {
       setDeleteError(err.message);
     } finally {
@@ -206,6 +196,14 @@ function App() {
         <section className="panel state-panel state-panel--error" role="alert">
           <p className="state-panel__title">Couldn’t load products.</p>
           <p className="state-panel__hint">{error}</p>
+
+          <button
+            className="btn btn--primary"
+            type="button"
+            onClick={() => setRefreshKey((currentKey) => currentKey + 1)}
+          >
+            Retry
+          </button>
         </section>
       ) : (
         <div className="layout">
@@ -285,9 +283,9 @@ function App() {
                 <span className="empty__icon">
                   <BoxIcon />
                 </span>
-                <p className="empty__title">No products yet</p>
+                <p className="empty__title">No products found</p>
                 <p className="empty__hint">
-                  Add your first product using the form.
+                  Try another search, clear the filters, or add a product.
                 </p>
               </div>
             ) : (

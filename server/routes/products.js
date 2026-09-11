@@ -23,7 +23,7 @@ router.get("/", (req, res) => {
 
   if (typeof search !== "string" || typeof sort !== "string") {
     return res.status(400).json({
-      message: "Search and sort must be strings",
+      message: "search and sort must be strings",
     });
   }
 
@@ -31,7 +31,7 @@ router.get("/", (req, res) => {
 
   if (!allowedSorts.includes(sort)) {
     return res.status(400).json({
-      message: "Invalid sort option",
+      message: "invalid sort option",
     });
   }
 
