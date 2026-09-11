@@ -1,1 +1,1 @@
-VITE_API_URL=localhost url with port
+VITE_API_URL=http://localhost:3000
