@@ -40,6 +40,74 @@ app.get("/", (req, res) => {
   });
 });
 
+// listing product from search
+app.get("/products", (req, res) => {
+  const search = req.query.search;
+
+  if (search !== undefined && typeof search !== "string") {
+    return res.status(400).json({
+      message: "must be string",
+    });
+  }
+
+  const filteredProducts = search
+    ? products.filter((product) =>
+        product.name.toLowerCase().includes(search.toLowerCase())
+      )
+    : products;
+
+  res.status(200).json(filteredProducts);
+});
+
+// route for a product
+app.get("/products/:id", (req, res) => {
+  const id = req.params.id;
+
+  const product = products.find((product) => product.id === id);
+
+  if (!product) {
+    return res.status(404).json({
+      message: "product not found",
+    });
+  }
+
+  res.status(200).json(product);
+});
+
+// post route
+app.post("/products", (req, res) => {
+  const { name, price, quantity = 1 } = req.body ?? {};
+
+  if (typeof name !== "string" || name.trim() === "") {
+    return res.status(400).json({
+      message: "prequired name",
+    });
+  }
+
+  if (!Number.isFinite(price) || price < 0) {
+    return res.status(400).json({
+      message: "price must not be a negative number",
+    });
+  }
+
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    return res.status(400).json({
+      message: "quantity must be at least 1 and whole number",
+    });
+  }
+
+  const newProduct = {
+    id: String(Date.now()),
+    name: name.trim(),
+    price,
+    quantity,
+  };
+
+  products.push(newProduct);
+
+  res.status(201).json(newProduct);
+});
+
 // unknown route.
 app.use((req, res) => {
   res.status(404).json({
